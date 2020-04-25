@@ -1,0 +1,122 @@
+#!/bin/sh
+
+failed () #When a fatal error has occurred
+{
+    echo "$1" >&2
+    exit 1
+}
+
+failed_continue () #Continues but reports to stderr   
+{
+    echo "$1" >&2
+}
+
+checkDirValid ()
+{
+    curr=$1
+    if [ "$curr" != "." ] && [ ! -d "$curr" ] #Check if it is a directory
+    then
+	failed "Given file name is not a directory."
+    fi
+    
+    if [[ ${curr:0:1} == \- ]] #Directory name cannot start with hyphen
+    then
+	validName=1
+	failed_continue "Directory name should not start with hyphen."
+    fi
+}
+
+checkReadPermission () #Check whether the directory has read permissions
+{
+    thisDir=$1
+    if [ ! -r $thisDir ]
+    then
+        if [ $thisDir == $dir ] #Directory read issues
+	then
+	    failed "No read permissions for base directory."
+	else
+	    havePermission=1
+	    failed_continue "No permissions to read this directory, moving on."
+	fi
+    fi
+    if [ -L "$thisDir" ] #Check if it is a symbolic link  
+    then
+        havePermission=1
+	failed_continue "Symbolic link, will not follow."
+    fi
+}
+
+
+recursive_search () {
+    currdir=$1
+    option=$2 #Recursive or not?
+    if [[ $option == '1' ]] #If the user has put the -r flag
+    then
+	recursive_search $currdir
+        find $currdir -mindepth 1 -type d -exec ./poornames '{}' ';' #recursion
+    else #BASIC POORNAMES
+	checkDirValid $currdir #Check the name of the directory
+	if [[ $validName == '1' ]] && [[ $currdir != '.' ]] #If the name is not valid
+        then 
+	    if [[ $currdir != *\/ ]]
+	    then
+		echo $currdir/
+	    else
+	        echo $currdir
+	    fi
+	fi
+	validName=0
+	
+	checkReadPermission $currdir #Check if there is read permission
+	if [[ $havePermission == '0' ]] #If there IS read permission
+	then #Search for poor names
+            (find $dir -maxdepth 1 -mindepth 1 |
+	    grep -E '\/{1}[A-Za-z]{1}[A-Za-z._-]{0,13}$' -v |
+	    xargs -r -d '\n' ls -p -1 -N -d --show-control-chars;
+    
+	    find $dir -maxdepth 1 -mindepth 1 |
+	    sort -df |
+	    uniq -Di |
+	    xargs -r -d '\n' ls -p -1 -N -d --show-control-chars) |
+	    sort -u
+	else
+	    havePermission=0 #Don't search for poor names, move on to next dir
+	fi
+    fi
+}
+
+
+##### MAIN
+
+recursive=0
+validName=0
+havePermission=0
+
+if [ $# -gt 2 ] #More than 2 arguments passed to poornames 
+then
+    failed "Too many arguments passed."
+elif [ $# -eq 2 ] #2 arguments passed to poornames
+then
+    if [ $1 == "-r" ] #If the first argument is -r
+    then
+        shift 1 #Shift and perform a recursive search
+	recursive=1
+	dir=$1
+	recursive_search "$dir" "$recursive"
+    else
+	failed "Invalid option/arguments."
+    fi
+
+elif [ $# -eq 0 ] #No arguments passed
+then #This is where I inserted that echo No Arguments command before to check
+    recursive_search . 0 #Check if this should be non recursive
+elif [ $# -eq 1 ] #Only one argument was passed
+then
+    if [ $1 == "-r" ] #Run a recursive search of .
+    then
+	recursive_search . 1
+    else #Run a non-recursive search of the dir (basic poornames)
+	dir=$1
+	recursive_search "$dir" "$recursive"
+    fi
+fi

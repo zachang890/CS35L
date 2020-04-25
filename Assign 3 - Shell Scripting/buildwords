@@ -1,0 +1,27 @@
+#!/bin/sh
+
+#First confine all characters to a lowercase standard and 
+#convert all grave accents
+tr '[:upper:]' '[:lower:]' |
+tr '`' "'" |
+
+#Remove ?, <u>, and </u>
+sed 's/?//g' |
+sed 's/<u>//g' |
+sed 's/<\/u>//g' |
+
+#Extract all lines with words with specific chars (including space)
+grep " *<td[^>]*>[-pk'mnwlhaeiou ]*</td> *" |
+
+#Remove tags, insert new lines in place of spaces and hyphens 
+#to represent separate words
+sed 's/<[^>]*>//g' |
+tr ' ' '\n' |
+tr '-' '\n' |
+
+#Remove whitespace and lines that are completely empty
+tr -d '[:blank:]' |
+sed '/^ *$/d' |
+
+#Sort the Hawaiian words
+sort -u

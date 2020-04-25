@@ -1,0 +1,225 @@
+LAB: SPELL-CHECKING HAWAIIAN
+
+locale					Check for LC_CTYPE="C" or LC_CTYPE="POSIX"
+export LC_ALL='C'			Used export command to change to LC_CTYPE = "C"
+locale 					Verify that it was changed
+sort /usr/share/dict/words > words	Sort the words file and add it to directory
+wget https://web.cs.ucla.edu/classes/spring20/cs35L/assign/assign3.html
+					(Above) Acquire HTML file of webpage
+mv assign3.html assign3.txt		Conver to a txt file
+
+
+tr Commands
+man tr					Find where to input the input file in the command
+
+1)
+tr -c 'A-Za-z' '[\n*]' < assign3.txt
+Using the man page: The tr command has the -c option 
+which basically takes the complement of set 1. In 
+this case the complement of set 1 would be non-alphabetic 
+characters. Set 2 describes newline characters. As a whole, 
+this command converts all non-alphabetic characters 
+into newline characters. This is apparent through 
+the abundant amount of space between words.
+
+2)
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt
+Using the man page: This tr command also has 
+the -s option which replaces each repeated character 
+with only one occurrence of that character. This 
+command does the same thing as the command in 1) 
+except now there are no more repeated new lines (only 
+one new line per non-alphabetical character). 
+This is evident through the lack of blank lines.
+
+3)
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort
+This command takes the output from the previous 
+command in 2) and sorts the outcome, outputting 
+the result to the terminal. They are sorted by 
+ASCII value because we changed it to standard C 
+earlier.
+
+4)
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort -u
+This command does the same as the above 
+in 3) except now the -u has been added. 
+According to the manual for sort, the -u option 
+basically only outputs a sorted list of 
+expressions with no duplicated. This is 
+evident in the list of expressions output 
+without any duplicates.
+
+5)
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort -u | comm - words
+According to man comm, the command takes in 
+two files and compares them line by line. 
+In this case, the two files are the sorted 
+assign3.txt from the command before the '|' 
+and the words file. What happens is that three 
+columns of words are output: the first 
+column contains the lines that are unique to 
+the output of the sort command, the second column 
+contains the lines unique to the words file, and 
+the the third column has lines that appear 
+in both of the files. 
+
+6)
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort -u | comm -23 - words
+According to the man comm, this command does the same as the above 
+command in 5) except this time, it suppresses columns 2 and 3 in the 
+output. Therefore, only the lines unique to the output of the sort 
+command are output. These are the words not found in the words file.
+
+7) Get the htm file, create the script file and give executable permission
+wget https://www.mauimapp.com/moolelo/hwnwdshw.htm
+touch buildwords
+chmod +x buildwords 
+
+
+
+THE BUILDWORDS SCRIPT
+
+1) Specify the interpreter for the shell
+#!/bin/sh
+
+2) Change all characters to lowercase to standardize, as well as 
+standardizing all grave accents to ASCII apostrophe
+tr '[:upper:]' '[:lower:]' |
+tr '`' "'" |
+
+3) Remove all the question marks and <u> and </u>
+sed 's/?//g' |
+sed 's/<u>//g' |
+sed 's/<\/u>//g' |
+
+4) Find all lines that have have Hawaiian words in them
+grep " *<td[^>]*>[-pk'mnwlhaeiou ]*</td> *" |
+
+5) Delete all tags and put new lines in place of hyphens and spaces
+sed 's/<[^>]*>//g' |
+tr ' ' '\n' |
+tr '-' '\n' |
+
+6) Delete all whitespace and all empty lines
+tr -d '[:blank:]' |
+sed '/^ *$/d' |
+
+7) Sort the file of words
+sort -u
+
+
+
+FULL BUILDWORDS SCRIPT:
+#!/bin/sh 
+
+#First confine all characters to a lowercase standard 
+#and convert all grave accents
+tr '[:upper:]' '[:lower:]' |
+tr '`' "'" |
+
+#Remove ?, <u>, and </u>                      
+sed 's/?//g' |
+sed 's/<u>//g' |
+sed 's/<\/u>//g' |
+
+#Extract all lines with words with specific 
+chars (including space)                   
+
+grep " *<td[^>]*>[-pk'mnwlhaeiou ]*</td> *" |
+
+#Remove tags, insert new lines in place of spaces and hyphens to 
+represent separate words              
+sed 's/<[^>]*>//g' |
+tr ' ' '\n' |
+tr '-' '\n' |
+
+#Remove whitespace and lines that are completely empty                     
+tr -d '[:blank:]' |
+sed '/^ *$/d' |
+
+#Sort the Hawaiian words
+sort -u
+
+
+Used command 'cat hwnwdshw.htm | ./buildwords | less' to test, and it outputs
+the Hawaiian words correctly.
+
+cat hwnwdshw.htm | ./buildwords > hwords	Save as file hwords
+
+
+
+SPELL CHECKER FOR HAWAIIAN WORDS
+Reminder that the English Spell Checker command was:
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort -u | comm -23 - words
+
+
+The English checker fishes out all words from the file that are not in English.
+So an analog for that in Hawaiian would be:
+tr -cs 'A-Za-z' '[\n*]' < assign3.txt | sort -u | comm -23 - hwords
+
+
+BUT, we need to convert all to lowercase and add the apostrophe:
+cat assign3.html | tr '[:upper:]' '[:lower:]' | tr -cs "'A-Za-z" '[\n*]' 
+| sort -u | comm -23 - hwords
+
+The above command seems to work correctly, outputting a whole list of 
+"misspelled Hawaiian words."
+
+
+Checking the Hawaiian dictionary against itself:
+cat hwords | tr '[:upper:]' '[:lower:]' | tr -cs "A-Za-z'" '[\n*]'
+ | sort -u | comm -23 - hwords
+
+This above command does not output any misspelled Hawaiian words, as expected.
+
+
+
+NUMBER OF MISSPELLED WORDS REPORTED
+cat assign3.html | tr '[:upper:]' '[:lower:]' | tr -cs "'A-Za-z" '[\n*]' 
+| sort -u | comm -23 - hwords | wc -w
+Found out that there are 574 misspelled words according to HAWAIIAN Checker.
+
+tr -cs 'A-Za-z' '[\n*]' < assign3.html | sort -u | comm -23 - words | wc -w
+Found out that there are 104 misspelled words according to ENGLISH Checker.
+
+
+
+WORDS THAT ENGLISH CHECKER REPORTS BUT HAWAIIAN CHECKER DOES NOT
+1) First create a file for the words that the English Checker 
+sees as misspelled
+tr -cs 'A-Za-z' '[\n*]' < assign3.html | sort -u 
+| comm -23 - words > englishCheckerReport.txt
+
+2) Run these misspelled words through the Hawaiian dictionary
+Use the -12 flag on comm to find Hawaiian words in the 
+English Checker's misspelled words report.
+cat englishCheckerReport.txt | tr '[:upper:]' '[:lower:]' 
+| tr -cs "'A-Za-z" '[\n*]' 
+| sort -u | comm -12 - hwords | wc -w
+
+There are 4 words that the English Checker reports as misspelled but the 
+Hawaiian Checker would not have reported.
+Simply remove the wc -w command to see the list of words.
+Two Examples: lau, kahiki
+
+
+WORDS THAT HAWAIIAN CHECKER REPORTS BUT ENGLISH CHECKER DOES NOT
+1) First create	a file for the words that the Hawaiian Checker 
+sees as misspelled
+cat assign3.html | tr '[:upper:]' '[:lower:]' | tr -cs "'A-Za-z" '[\n*]' 
+| sort -u | comm -23 - hwords > hawaiianCheckerReport.txt
+
+2) Run these misspelled	words through the English dictionary
+Use the	-12 flag on comm to find English words in the Hawaiian Checker's 
+misspelled words report.
+tr -cs 'A-Za-z' '[\n*]' < hawaiianCheckerReport.txt | sort -u 
+| comm -12 - words | wc -w
+
+There are 512 words that the English Checker reports as misspelled but the 
+Hawaiian Checker would not have reported.
+Remove the wc -w command to see the list of words
+Two Examples: with, word
+
+
+NOTE: Everytime you work, make sure to export the locale again
