@@ -1,0 +1,113 @@
+1. man -k
+   Shell commands:
+   man man
+
+2. mv can be found in /usr/local/cs/bin/mv, sh can be found in /usr/bin/sh
+   Shell commands:
+   man which
+   which mv
+   which sh
+I used the commands above to figure out how to use the which command, then utilizing it to find the locations of mv and sh.
+
+3. There are three executable programs that satisfy these conditions: tr, ar, and pr.
+   tr - translates or delete characters
+   ar - can create, modify, and extract from archives
+   pr - converts text files for printing
+   Shell commands:
+   man find
+   find /usr/bin/ -name "?r" -executable
+   man tr
+   man ar
+   man pr
+I looked through the find command's description and found that it could be modified to search according to a path, a file's name, and a file's name length, also specifying that it should be executable. Then I used the man command for each of the three executable programs I found.
+
+4. /etc/alternatives/emacs is actually executed
+   Shell commands:
+   man -k symbolic
+   readlink /usr/bin/emacs
+I used the man -k command to find commands that have the word "symbolic." The readlink command can read the value of a symbolic link.
+
+5. The version of /usr/bin/gcc is 4.8.5 while the version of the plain gcc program is 9.3.0. The versions are different simply because they are different files in different directories.
+   Shell commands:
+   /usr/bin/gcc -v
+   gcc -v
+   which gcc
+Performing the "which gcc" command reveals that the plain gcc program has the following path: "/usr/local/cs/bin/gcc
+
+6. The symbolic mode u+sx allows the user who owns the file permission to both set the user or group ID on execution and also to execute the file. The symbolic mode o-w means that the other users not in the file's group no longer have permission to write.
+   Shell commands:
+   man chmod
+ 
+7. find /usr/local/cs -type d -mtime -28. There are 446 directories that satisfy the conditions. Some examples are as follows:
+/usr/local/cs
+/usr/local/cs/src/git
+/usr/local/cs/src/git/RCS
+/usr/local/cs/src/coreutils
+/usr/local/cs/src/coreutils/RCS
+   Shell commands:
+   man find
+   find /usr/local/cs -type d -mtime -28
+   find /usr/local/cs -type d -mtime -28 | wc -l
+You can specify path, modified time, and type of file in the find command.
+
+8. 280 are symbolic links
+   Shell commands:
+   which find
+   man find
+   man wc
+   find . /usr/bin/ -type l | wc -l
+The "find ." command recursively searches through all files and subdirectories. Then specify the path and the type is symbolic links. wc -l counts the number of links. 
+
+9. librom1394.so.0.3.0 is the oldest regular file
+   Shell commands:
+   man ls
+   ls -alt /usr/lib64
+-a does not ignore entries starting with . and -lt lists the files in a sorted order in a long listing format. Then, define the path.
+
+10. /usr/share/i18n/locales 
+   Shell commands:
+   man locale
+
+11. There are two commands with "downcase" in their name: downcase-region, downcase-word.
+   Emacs commands:
+   C-h
+   a
+   downcase
+
+12. C-M-r: performs incremental search backward for regular expressions and regular string search for those with prefix arguments
+    C-M-s: runs command isearch-forward-regexp; performs incremental search forward for regular expressions and regular string search for those with prefix arguments
+    C-M-t: runs transpose-sexps
+    C-M-u: runs upcase-word command; convert ARG words to upper case
+    C-M-v: scrolls next window upward ARG lines or near full screen without ARG   Emacs commands:
+   C-h k
+   C-M-r
+   C-h k
+   C-M-s
+   C-h k
+   C-M-t
+   C-h k
+   C-M-u
+   C-h k
+   C-M-v
+
+13. C-g: signal a 'quit' condition; runs command keyboard-quit; at top-level, this simply beeps.
+   Emacs commands:
+   C-h k
+   C-g
+
+14. The yank command can be invoked with C-y, and it reinserts the most recent kill (the stretch of killed text most recently killed or yanked).
+   Emacs commands:
+   C-h w
+   yank
+   C-h k
+   C-y
+
+15. The ls -l command does not display the "." and ".." hard links, but the dired command does show them at the top of the list of files.
+   Shell commands:
+   cd /usr/bin
+   ls -l
+   emacs
+   Emacs commands:
+   C-h f
+   dired
+   C-x d 
