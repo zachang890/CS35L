@@ -1,0 +1,62 @@
+######SETTING UP SSH-AGENT############
+
+HOME: lnxsrv06, REMOTE: lnxsrv07
+
+Commands: 
+ls -a		 Check to see whether you do or do not have the .ssh directory
+mkdir .ssh 	 If not, make the directory
+cd .ssh 	 Go into the directory
+ssh-keygen 	 Generate a key
+CS35LKey	 Name it CS35LKey
+*password*	 Type in password twice
+ls 		 (notice that CS35LKey and CS35LKey.pub appear)
+
+
+SETTING UP REMOTE SERVER
+Open a new terminal window and ssh login into lnxsrv07
+cd .ssh	   	    	       	      Notice that the CS35LKey and CS35LKey.pub files are there (share filesystem)
+touch authorized_keys 	    	      Keep track of the authorized public keys
+chmod 600 authorized_keys   	      Change permission to only read write by owner
+ls -alt   		    	      (now it is -rw-------)
+cat CS35LKey.pub >> authorized_keys   Append the public key to authorized_keys
+
+
+ENSURE KEY FUNCTIONALITY
+ssh -i CS35LKey zacharyc@lnxsrv07.seas.ucla.edu		(-i means to use key identification) 
+*password*						Type in passphrase made when creating the key
+
+Summary so far: client have a public and private key, servers have public key, use private key to prove your identity
+
+
+USE SSH-AGENT TO MAINTAIN TRUST
+Ctrl-D 	      	 	  log out of lnxsrv07 and back to lnxsrv06
+eval $(ssh-agent)	  needed to start ssh-agent
+
+Now to add key to the ssh-agent
+ssh-add CS35LKey
+Enter the passphrase
+
+ssh -i CS35LKey	zacharyc@lnxsrv07.seas.ucla.edu
+No password prompt now!
+
+Notice that when you log out, you still need to type "eval" and "ssh-add" again and enter passphrase, only once
+
+
+###########PORT FORWARDING#########
+
+Download XQuartz
+ssh -X zacharyc@lnxsrv06.seas.ucla.edu
+xeyes
+The XQuartz eyes pop up.
+
+
+#########MULTI-HOP DAISY CHAIN########
+
+ssh -A zacharyc@lnxsrv06.seas.ucla.edu		Login to Host with Agent Forwarding
+*password*					Enter Usual Password
+eval $(ssh-agent)				Activate the ssh-agent
+cd .ssh						Enter .ssh directory
+ssh-add CS35LKey				Add the key to the agent
+cd ..
+ssh -A zacharyc@lnxsrv07.seas.ucla.edu		Log in to lnxsrv07 without password
+ssh -A zacharyc@lnxsrv09.seas.ucla.edu		Log in to lnxsrv09 without password, and so on...

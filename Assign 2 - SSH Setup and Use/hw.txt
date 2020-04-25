@@ -1,0 +1,54 @@
+GNU KEY GENERATION
+
+First verify with gpg --version to verify v2
+gpg --gen-key		Generate a key pair
+1 Enter			RSA and RSA Keys option
+Enter			2048 Bit Key
+Enter			Key does not expire
+y			Verify
+Zachary Chang		user ID for identification
+Email			
+Zachary Chang <zachang890@gmail.com>
+Passphrase		To protect the key
+
+
+EXPORT THE KEY
+The key is currently in the key ring
+gpg --armor --export zachang890@gmail.com > hw-pubkey.asc	Export the key
+
+
+MAKING A SIGNATURE
+The public key is the FILE we are creating the signature for
+gpg --armor --output hw-pubkey.sig --detach-sig hw-pubkey.asc 	 Create the detached Signature
+gpg --verify hw-pubkey.sig hw-pubkey.asc		 Verify the signature
+
+
+Question Responses:
+1) The resulting network would still be secure. SSH is an encrypted form of 
+connection/communication. The private key stays on our machine. No passphrases are passed over the
+ actual network, so someone listening onto the network would have a very low chance of being able 
+to intrude upon the network.
+
+1)(1) This network could be less secure. When friendly teammates use a password to get 
+past the initial security phase after setup (such as typing in a passphrase to ssh onto lnxsrv06,
+anyone tracking the keys would be able to get that passphrase and then use the ssh-agent to enter
+any other remote server on the network. They would also be able to access the file with the private
+key and decrypt any messages sent over with a public key. However, the fact that the private
+keys are created uniquely with the same password, the keys still could be secure.
+
+1)(2) In this case, this would also pose a high-risk scenario for the network because now the 
+attacker (other team) has access to the private key, allowing them to successfully decrypt any files
+ or messages transported over with the public key encryption.
+
+2) The --verify command does not verify that I created the file. This is because the command only 
+checks to see whether the unlocked signature (unlocked with the public key) matches the hashed 
+data. The creator of the file is not something checked, rather the unchanged state of the file is 
+being verified. I would be inclined to believe that the person sent it to me was the creator. 
+Someone can exploit this by posing as the original creator, and I would have no way of knowing 
+because information about the creator is not provided in the first place. One possible way to 
+solve this is, is by having an unbiased outsider track the progress of the key 
+over multiple senders. There would be a unique identifier holding onto the identity of the creator
+ of the file no matter how many types the file is sent. Another way to solve the problem would be 
+to require that each person sign the public key after adding into their keyring and definitely 
+after verifying the key's fingerprint with the previous sender. This, way the "check" command can 
+be used to see who has signed the key and trace it back to the original creator of the file. 
