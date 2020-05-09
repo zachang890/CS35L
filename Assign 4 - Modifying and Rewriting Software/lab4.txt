@@ -1,0 +1,112 @@
+ASSIGNMENT 4: MODIFYING AND REWRITING SOFTWARE
+
+######LAB: Small Change to Big Package
+
+VERIFY PROBLEM STILL OCCURS
+1. Created bash script that contains:
+#!/bin/sh
+exec ls -a "$@"
+
+2. Noticed that './la -A' and 'ls -a -A' output the same files.
+
+3. Used 'man ls' to check that GNU Coreutils is version 8.22.
+
+
+WORKING WITH COREUTILS 8.29
+
+1. Retrieve the compressed tarball, and all necessary files 
+   mkdir coreutilsResource
+   cd coreutilsResource
+   wget ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.29.tar.xz
+   wget	ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.29.tar.xz.sig
+   wget https://ftp.gnu.org/gnu/gnu-keyring.gpg
+
+   Unzip the tarball
+   tar -xJvf coreutils-8.29.tar.xz
+
+   Verify signature with the keyring
+   gpg --verify --keyring ./gnu-keyring.gpg coreutils-8.29.tar.xz.sig
+
+Given Output:
+gpg: Signature made Wed 27 Dec 2017 10:29:05 AM PST using RSA key ID 306037D9
+gpg: Good signature from "Pádraig Brady <P@draigBrady.com>"
+gpg:                 aka "Pádraig Brady <pbrady@redhat.com>"
+gpg:                 aka "Pádraig Brady <pixelbeat@gnu.org>"
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 6C37 DC12 121A 5006 BC1D  B804 DF6F D971 3060 37D9
+
+There seems to be a warning about the validity of the signature.
+This is attributed to the fact that we are using a public key, which has not
+been verified.
+
+2. Compile and install Coreutils
+   echo $PWD   Used to see the directory path
+   cd coreutils-8.29
+   
+   Running the configure script and make command to compile, create makefiles
+   ./configure --prefix=/u/ma/ugrad/zacharyc/cs35L/Lab4/coreutilsResource
+   make
+   make install
+
+   Check if installed correctly
+   cd ..
+   cd bin
+   ls		Found many commands in here typically used in Linux 
+
+3. Reproduce the bug with the installed ls command
+   ~/cs35L/Lab4/coreutilsResource/bin/ls -a -A
+
+Given Output:
+.   bin		    coreutils-8.29.tar.xz      gnu-keyring.gpg	share
+..  coreutils-8.29  coreutils-8.29.tar.xz.sig  libexec
+
+Notice that the . and .. directories are still shown, which means that 
+the -a flag still overpowers the -A flag.
+
+4. Applying the patch
+   First use Copy-paste to retrieve the patch from the post
+   Navigate to the bug patch for Bug#30963 and copy paste into a new file
+   emacs lsp.diff
+
+   Apply the patch
+   patch -p1 < lsp.diff
+
+ERROR MESSAGES
+patching file NEWS
+Hunk #1 FAILED at 4.
+1 out of 1 hunk FAILED -- saving rejects to file NEWS.rej
+patching file src/ls.c
+Hunk #1 succeeded at 1900 (offset -3 lines).
+patching file tests/local.mk
+Hunk #1 FAILED at 575.
+1 out of 1 hunk FAILED -- saving rejects to file tests/local.mk.rej
+patching file tests/ls/a-option.sh
+
+This does not prevent the modified coreutils from working. This could be 
+attributed to simple spacing discrepancies.
+
+
+5.
+Run make (modifications output listed below)
+  CC       src/ls.o
+  CCLD     src/dir
+  CCLD     src/ls
+  CCLD     src/vdir
+  GEN      man/dir.1
+  GEN      man/ls.1
+  GEN      man/vdir.1
+
+Only the necessary commands were run for each simply because these
+were the only files that needed to be updated. The autoreconf 
+command was not needed in this scenario. This command is only used
+in case the make command does not work.
+
+6. Testing that it works
+   ~/cs35L/Lab4/coreutilsResource/bin/ls -a -A
+
+Given Output:
+bin	coreutils-8.29.tar.xz	   gnu-keyring.gpg  share
+coreutils-8.29			   coreutils-8.29.tar.xz.sig  libexec
+
+Because both the . and .. files do not appear, we know the patch has worked.

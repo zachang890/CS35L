@@ -1,0 +1,58 @@
+Q1. There does seems to exist a significant difference between the
+performances of the two commands. Using the time command as follows:
+
+time ls
+time ~/cs35L/Lab4/coreutilsResource/bin/ls
+
+repeatedly, I was able to see the performance times for each command.
+Both commands had performance times that revolved around the following:
+real 0m0.004s
+user 0m0.002s
+sys  0m0.002s
+
+However, on more occasions, the patch command had performance times much 
+nearer to zero seconds much more often than the default ls command 
+(comparison primarily done with the "user" time, which is the elapsed 
+time in running the ls command). This suggests to me that, there is a 
+difference in performance, and this can be attributed to the removal 
+of the 'if' statement which can be found in the diff file.
+
+
+Q2. Adopting this new version of ls could be dangerous for the 
+functionality for any applications that the company makes or runs. 
+The new version may no longer be compatible simply because the ls command 
+no longer acts the same way it used to in regards to the ls -A command. 
+If any software relies on the ls -A command where -A is overridden, 
+there would now be an issue because now -A does not get overriden and 
+may disrupt the regular, expected behavior of any applications that
+expected the old behavior of ls.
+
+
+
+Q3. When invoked on an empty file, an error is returned that says "list 
+index out of range." This can be traced to the line involving the 
+random.choice method. The random.choice method cannot handle empty 
+input which is clearly seen in one of the error messages as follows:
+File "/usr/lib64/python2.7/random.py", line 274, in choice
+    return seq[int(self.random() * len(seq))] 
+ # raises IndexError if seq is empty
+
+As seen, an error is to be thrown if there is no random line to be presented.
+
+
+Q4. When invoked using Python 3, this time we get the following error: 
+  File "randline.py", line 65
+    except IOError as (errno, strerror):
+                      ^
+SyntaxError: invalid syntax
+
+There is a syntax error simply because in Python 3, 
+exceptions are not iterable like they are in 
+Python 2.Therefore, it is not possible to iterate over 
+these parameters. 
+
+
+Q5. There seems to be no difference when invoking the shuf.py script 
+in Python 2 vs. Python 3. We noticed in the previous problem that 
+exceptions are no longer iterable in Python 3, but since I did not 
+require that functionality, I noticed no difference in performance. 
