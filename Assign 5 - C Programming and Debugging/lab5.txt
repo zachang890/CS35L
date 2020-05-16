@@ -1,0 +1,169 @@
+ASSIGNMENT 5: C PROGRAMMING AND DEBUGGING
+
+######LAB: Debugging a C Program
+
+1. Get the compressed tarball to test the old stable version of coreutils
+   mkdir coreutils
+   wget https://web.cs.ucla.edu/classes/spring20/cs35L/assign/coreutils-with-bug.tar.gz
+   
+   Unzip a tar.gz file with tar -xf
+   tar -xf coreutils-with-bug.tar.gz
+
+2. Building and installing Coreutils as is
+   echo $PWD 	Find the directory path for the configure command
+   cd coreutils-with-bug
+   
+3. Run the configure command
+   ./configure --prefix=/u/ma/ugrad/zacharyc/cs35L/Lab5/coreutils
+   make
+   make install
+
+PROBLEMS BUILDING IT AS-IS (ERROR REPORT):
+In file included from utimecmp.c:41:0:
+utimens.h:2:5: error: conflicting types for 'futimens'
+ int futimens (int, char const *, struct timespec const [2]);
+     ^
+In file included from utimecmp.h:25:0,
+                 from utimecmp.c:25:
+/usr/include/sys/stat.h:373:12: note: previous declaration of 'futimens' was here
+ extern int futimens (int __fd, const struct timespec __times[2]) __THROW;
+            ^
+make[2]: *** [utimecmp.o] Error 1
+make[2]: Leaving directory `/w/home.26/ma/ugrad/zacharyc/cs35L/Lab5/coreutils/coreutils-with-bug/lib'
+make[1]: *** [install] Error 2
+make[1]: Leaving directory `/w/home.26/ma/ugrad/zacharyc/cs35L/Lab5/coreutils/coreutils-with-bug/lib'
+make: *** [install-recursive] Error 1
+
+
+4. Fixing the error
+   wget https://web.cs.ucla.edu/classes/spring20/cs35L/assign/coreutils.diff 
+
+   Apply the patch with the following command
+   patch -p0 < coreutils.diff
+   make
+
+   Notice this time that no errors arise
+   make install
+
+In the error message, it mentions that there was some previous declaration of the futimens function in
+a separate file, so the patch resolves this issue simply by renaming the function name to 
+"coreutils_futimens" in order to resolve the "conflicting types" error. Now the compiler knows which
+function to use definitively.
+
+
+Reproducing the Problem
+Used the example given in the spec:
+$ tmp=$(mktemp -d)
+$ cd $tmp
+$ touch -d '1918-11-11 11:00 GMT' wwi-armistice-cs35L
+$ touch now
+$ sleep 1
+$ touch now1
+$ TZ=UTC0 ~/cs35L/Lab5/coreutils/bin/ls -lt --full-time wwi-armistice-cs35L now now1
+
+Given Output:
+-rw-r--r-- 1 zacharyc maugrad 0 1918-11-11 11:00:00.000000000 +0000 wwi-armistice-cs35L
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 01:16:30.534939757 +0000 now1
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 01:16:24.607757711 +0000 now
+
+As seen from 'man ls', the -t flag is supposed to put the newest file first, but the bug still causes
+the oldest file to be listed first.
+
+
+FINDING A STARTING POINT FOR DEBUGGING THE LS.C FILE
+
+Opening up the ls.c file, scrolling through, I notice several instances of the word sort, so by
+performing an I-search, I quickly find a sort_type that is called sort_time. In the comments,
+it is directly related to the -t flag. Looking a couple lines above, there are three categories,
+time_mtime, time_ctime, and time_atime. I decide that the /* default */ option must be the one
+connected with -t, so 'time_mtime' must be the time being compared with the sort. After going 
+through the file searching for some more for occurrences of the sort_time variable, I find a switch
+statement that takes in the sort_time case as well as the time_mtime case. A ternary operator 
+follows, and so the function 'compare_mtime' seems to be what I'm looking for.
+
+START DEBUGGING
+In ~/cs35L/Lab5/coreutils/bin
+gdb ls
+break compare_mtime	Set a break point at the compare_mtime function
+run -lt 		Begin debugging with the flag we want to test
+
+In gdb:
+Stepped through multiple instructions until arriving at 'timespec_cmp'
+It seems that the difference in time is being kept in an integer, which has a max
+and min value which is not enough to contain the amount of time passed between an old
+file and a more recent file. This is located in /lib/timespec.h:48
+
+As a result this difference could cause overflow, so let's change the implementation
+so that the comparison is performed directly.
+
+static inline int
+timespec_cmp (struct timespec a, struct timespec b)
+{
+  if (a.tv_sec < b.tv_sec)
+  {
+    return -1;
+  }
+  else if (a.tv_sec == b.tv_sec)
+  {
+    return 0;
+  }
+  else
+  {
+    return 1;
+  }
+}
+
+I created a file named changeTime.h with this updated implementation.
+diff -u timespec.h changeTime.h > lab5.diff
+
+DIFF FILE:
+--- timespec.h	2005-09-21 23:05:39.000000000 -0700
++++ changeTime.h	   2020-05-04 09:32:08.658207000 -0700
+@@ -45,8 +45,18 @@
+ static inline int
+ timespec_cmp (struct timespec a, struct timespec b)
+ {
+-  int diff = a.tv_sec - b.tv_sec;
+-  return diff ? diff : a.tv_nsec - b.tv_nsec;
++  if (a.tv_sec < b.tv_sec)
++  {
++      return -1;
++  }
++  else if (a.tv_sec == b.tv_sec)
++  {
++      return 0;
++  }
++  else
++  {
++      return 1;
++  }
+ }
+ 
+ # if ! HAVE_DECL_NANOSLEEP
+
+
+Applying the patch:
+patch -p0 < lab5.diff
+make 
+make install
+
+Trying the above example again I get the following new output (which is correct):
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 16:39:45.147344747 +0000 now1
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 16:39:38.982155100 +0000 now
+-rw-r--r-- 1 zacharyc maugrad 0 1918-11-11 11:00:00.000000000 +0000 wwi-armistice-cs35L
+
+
+REPRODUCING PROBLEM IN HOME DIRECTORY ON SEASNET
+touch -d '1918-11-11 11:00 GMT' wwi-armistice-cs35L
+touch now
+sleep 1
+touch now1
+TZ=UTC0 ls -lt --full-time wwi-armistice-cs35L now now1
+
+Given Output:
+-rw-r--r-- 1 zacharyc maugrad 0 2054-12-17 17:28:16.000000000 +0000 wwi-armistice-cs35L
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 16:44:46.127040000 +0000 now1
+-rw-r--r-- 1 zacharyc maugrad 0 2020-05-04 16:44:42.192017000 +0000 now
+
+Here, we see that the time has been modified to some time in the future (2054). 
+The SEASNet home directory changes very old files to have time stamps in the future.
