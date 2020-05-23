@@ -1,0 +1,246 @@
+LAB 6: Buffered versus unbuffered I/O
+
+
+1. tr2b.c (using getchar and putchar)
+a. First check whether the correct number of arguments were passed in using
+(argc != 3)
+b. Accept the two inputs as variables 'from' and 'to'
+c. Second check: verify that 'from' and 'to' are also the same length
+d. Third check: verify that the 'from' input has no duplicate bytes in it,
+this is accompilshed by checking each character in 'from' against the 
+entire string itself
+e. Transliterating: use getchar until the input reaches EOF,
+f. Get the index where the input char appears in 'from' (or if it doesn't 
+appear in 'from' return a -1 to the stored position)
+g. If -1 was returned, don't translate the character and output with putchar
+h. If another value was returned, translate the character to the corresponding
+character in the 'to' string
+
+2. tr2u.c (using read and write)
+a. Perform the same steps in tr2b.c (steps 1a - 1d)
+b. Create a buffer of length 1 to store the input character
+c. Use read, where the first argument is 0 since this is the file descriptor
+for stdin, read to the buffer, and read only 1 character
+d. Get the index where the char appears in 'from'
+e. If the char does not appear in 'from' write out the value using write
+with the first argument being 1 since this is the descriptor for stdout, use
+address of buffer since write takes a pointer
+f. If char does appear in 'from' write out the corresponding character in 'to'
+
+3. Using strace
+
+Create a python file that creates a file completely filled with 5000000 
+bytes of randomly chosen letters using random.choice(string.letters).  
+This output file is called longfile.txt.
+
+Use strace and the -c option for a summary of system calls
+a) Copy one file to another
+BUFFERED (tr2b)
+strace -c ./tr2b abc iou < longfile.txt > out2b.txt
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 51.61    0.000739           1       611           write
+ 26.12    0.000374           1       613           read
+  6.98    0.000100          11         9           mmap
+  4.12    0.000059          15         4           mprotect
+  2.72    0.000039          10         4           fstat
+  2.03    0.000029          15         2           open
+  1.89    0.000027          27         1           execve
+  1.61    0.000023          23         1           munmap
+  0.98    0.000014           7         2           close
+  0.98    0.000014          14         1         1 access
+  0.49    0.000007           7         1           brk
+  0.49    0.000007           7         1           arch_prctl
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.001432                  1250         1 total
+
+UNBUFFERED (tr2u)
+strace -c ./tr2u abc iou < longfile.txt > out2b.txt
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 54.77   23.610650           5   5000000           write
+ 45.23   19.499398           4   5000002           read
+  0.00    0.000083          12         7           mmap
+  0.00    0.000060          15         4           mprotect
+  0.00    0.000045          23         2           open
+  0.00    0.000023          23         1           munmap
+  0.00    0.000016          16         1           execve
+  0.00    0.000014           7         2           fstat
+  0.00    0.000014          14         1         1 access
+  0.00    0.000013           7         2           close
+  0.00    0.000008           8         1           brk
+  0.00    0.000008           8         1           arch_prctl
+------ ----------- ----------- --------- --------- ----------------
+100.00   43.110332              10000024         1 total
+
+As seen, the buffered version requires much less calls overall for 
+copying one file to another.
+
+b) Copying file to terminal
+BUFFERED
+strace -c ./tr2b abc iou < longfile.txt
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 93.14    0.022818           5      4883           write
+  6.86    0.001680           3       613           read
+  0.00    0.000000           0         2           open
+  0.00    0.000000           0         2           close
+  0.00    0.000000           0         4           fstat
+  0.00    0.000000           0         9           mmap
+  0.00    0.000000           0         4           mprotect
+  0.00    0.000000           0         1           munmap
+  0.00    0.000000           0         1           brk
+  0.00    0.000000           0         1         1 access
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0         1           arch_prctl
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.024498                  5522         1 total
+
+UNBUFFERED
+strace -c ./tr2u abc iou < longfile.txt
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 57.81   28.019940           6   5000000           write
+ 42.19   20.450823           4   5000002           read
+  0.00    0.000073          10         7           mmap
+  0.00    0.000063          16         4           mprotect
+  0.00    0.000030          15         2           fstat
+  0.00    0.000024          24         1           munmap
+  0.00    0.000016           8         2           open
+  0.00    0.000014           7         2           close
+  0.00    0.000007           7         1           arch_prctl
+  0.00    0.000000           0         1           brk
+  0.00    0.000000           0         1         1 access
+  0.00    0.000000           0         1           execve
+------ ----------- ----------- --------- --------- ----------------
+100.00   48.470990              10000024         1 total
+
+Again, notice how the buffered version requires much less calls than the
+buffered version.
+
+4. Using the time command
+a. Copying from file to file
+BUFFERED
+time ./tr2b abc iou < longfile.txt > out2b.txt
+real 0m0.382s
+user 0m0.325s
+sys  0m0.013s
+
+UNBUFFERED
+time ./tr2u abc iou < longfile.txt > out2b.txt
+real	0m11.929s
+user	0m3.387s
+sys	0m8.497s
+
+
+Here, according to the times, copying from file to file has much faster
+performance with the buffered version.
+
+b. Copying to the terminal
+BUFFERED
+time ./tr2b abc iou < longfile.txt
+real 0m0.593s
+user 0m0.410s
+sys  0m0.068s
+
+UNBUFFERED
+time ./tr2u abc iou < longfile.txt
+real	0m23.573s
+user	0m6.664s
+sys	0m16.870s
+
+For copying to terminal, the buffered version performs much faster.
+
+The buffered version has performed better in all these scenarios.
+
+
+
+HW ANALYSIS
+
+Empty File
+sfrobu time: 
+real   0m0.003s
+user   0m0.001s
+sys    0m0.002s
+
+sfrob time:
+real  0m0.003s
+user  0m0.002s
+sys   0m0.001s
+
+It seems that sfrobu and sfrob use a very similar amount of time when processing no input.
+
+
+100 Lines
+sfrobu time:
+real   0m0.004s
+user   0m0.000s
+sys    0m0.003s
+
+sfrob time:
+real  0m0.004s
+user  0m0.001s
+sys   0m0.003s
+
+It seems that the difference in time taken to process the input is still not very noticeable.
+
+
+10,000 Lines
+sfrobu time:
+real   0m0.164s
+user   0m0.078s
+sys    0m0.080s
+
+sfrob time:
+real  0m0.128s
+user  0m0.080s
+sys   0m0.043s
+
+It is beginning to be noticeable. Sfrob seems to have a better performance time than sfrobu.
+
+
+1 Million Lines
+sfrobu time:
+real   0m44.830s
+user   0m6.852s
+sys    0m7.881s
+
+sfrob time:
+real  0m12.420s
+user  0m7.555s
+sys   0m3.376s
+
+Here the difference is increasingly noticeable. Sfrob has a much better performance time than sfrobu.
+
+
+Overall, the general trend is that sfrob tends to perform faster than sfrobu. 
+This can be explained by the fact that system calls are extremely expensive,
+and as the number of calls that need to be made piles up (the amount of input
+is increased), the "expense" piles up as well. This expense is caused by 
+the amount of extra operations that the kernel has to go through in order to
+get the desired input. This takes many less operations that functions like
+getchar and putchar.
+
+
+SYSTEM CALLS INSTEAD
+strace -e trace=memory ./sfrobu < sfrobu.c
+
+This command quickly reveals two major functions that have to do with
+malloc, realloc, and free.
+
+The first is the mmap syscall. Here is an example below:
+mmap(0x7ff3cc631000, 16864, PROT_READ|PROT_WRITE, MAP_PRIVATE
+|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7ff3cc631000
+
+According to the mmap documentation:
+The mmap function takes in parameters denoting the starting address, 
+the length of the particular mapping, a certain offset in the file, a file
+descriptor, a protection style, and flags indicating visibility of memory.
+
+
+Another is the munmap syscall. Here is an example below:
+munmap(0x7ff3cc82f000, 158997)
+
+The arguments it takes in are simply the starting address of memory to unmap and
+the length of memory to unmap.
+
