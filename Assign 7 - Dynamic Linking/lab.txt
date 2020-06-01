@@ -1,0 +1,504 @@
+############ASSIGNMENT 7: DYNAMIC LINKING
+
+LAB: WHO'S LINKED TO WHAT?
+
+1. Use emacs simpgmp.c to create a new file and copy-paste the program from
+the website into the file so that the contents of simpgmp.c are as below:
+#include <gmp.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int
+err (char const *format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  vfprintf (stderr, format, args);
+  va_end (args);
+  return EXIT_FAILURE;
+}
+
+int
+main (int argc, char **argv)
+{
+  if (argc != 2)
+    return err ("%s: usage: %s exponent\n", argv[0], argv[0]);
+  errno = 0;
+  char *end;
+  unsigned long exponent = strtoul (argv[1], &end, 10);
+  if (argv[1] == end || *end || errno == ERANGE)
+    return err ("%s: %s: invalid exponent\n", argv[0], argv[1]);
+  mpz_t z;
+  mpz_init (z);
+  mpz_ui_pow_ui (z, 2, exponent);
+  if (! (mpz_out_str (stdout, 10, z)
+   && printf ("\n") == 1
+    && fflush (stdout) == 0))
+    return err ("%s: output error\n", argv[0]);
+  return EXIT_SUCCESS;
+}
+
+
+Use the following to build an executable for the C program:
+$ gcc -o simpgmp -lgmp simpgmp.c
+Use the following to run the program:
+$ ./simpgmp
+Output:
+./simpgmp: usage: ./simpgmp exponent
+
+After examining the program, it seems that it takes the number 2 to an 
+exponent defined in an argument to the executable.
+
+
+2. To compute the value of 2**24, run the following command:
+$ ./simpgmp 24
+Output:
+16777216
+
+To compute the value of 2**(2**24), run the following command:
+$ ./simpgmp 16777216
+Output:
+(Very long number that begins with 1818 and ends with 7536)
+
+To count the number of digits, run the following command: 
+$ ./simpgmp 16777216 | wc -m
+Output:
+5050447
+
+This output is one off the expected 5050446 digits, and one possible suspect
+would be a newline character since -m counts the total characters.
+Surely enough, when running the following command:
+$ ./simpgmp 16777216 | wc -l
+Output:
+1
+
+We find that there is one newline character. Therefore, the true number of 
+digits in the output is, in fact, 5050446 digits long.
+
+
+3. To check the dynamic libraries that are used, run this command:
+$ ldd simpgmp
+Output:
+linux-vdso.so.1 =>  (0x00007ffdf17e4000)
+libgmp.so.10 => /lib64/libgmp.so.10 (0x00007fbca9db1000)
+libc.so.6 => /lib64/libc.so.6 (0x00007fbca99e3000)
+/lib64/ld-linux-x86-64.so.2 (0x00007fbcaa029000)
+
+From the output, we can tell that there are 4 different dynamic libraries
+being used that are listed above.
+
+
+4. To check the syscalls that the simpgmp executable uses, run this command:
+$ strace ./simpgmp
+Output:
+
+execve("./simpgmp", ["./simpgmp"], [/* 41 vars */]) = 0
+brk(NULL)                               = 0x6a3000
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f8a973eb000
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=158997, ...}) = 0
+mmap(NULL, 158997, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f8a973c4000
+close(3)                                = 0
+open("/lib64/libgmp.so.10", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\200\304\0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=495720, ...}) = 0
+mmap(NULL, 2584736, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f8a96f53000
+mprotect(0x7f8a96fc9000, 2093056, PROT_NONE) = 0
+mmap(0x7f8a971c8000, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x75000) = 0x7f8a971c8000
+close(3)                                = 0
+open("/lib64/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0P&\2\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=2156072, ...}) = 0
+mmap(NULL, 3985888, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f8a96b85000
+mprotect(0x7f8a96d48000, 2097152, PROT_NONE) = 0
+mmap(0x7f8a96f48000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1c3000) = 0x7f8a96f48000
+mmap(0x7f8a96f4e000, 16864, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f8a96f4e000
+close(3)                                = 0
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f8a973c3000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f8a973c1000
+arch_prctl(ARCH_SET_FS, 0x7f8a973c1740) = 0
+mprotect(0x7f8a96f48000, 16384, PROT_READ) = 0
+mprotect(0x7f8a971c8000, 8192, PROT_READ) = 0
+mprotect(0x600000, 4096, PROT_READ)     = 0
+mprotect(0x7f8a973ec000, 4096, PROT_READ) = 0
+munmap(0x7f8a973c4000, 158997)          = 0
+write(2, "./simpgmp: usage: ./simpgmp expo"..., 37./simpgmp: usage: ./simpgmp exponent
+) = 37
+exit_group(1)                           = ?
++++ exited with 1 +++
+
+
+The section of syscalls most pertinent for dynamic linking is the following:
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=158997, ...}) = 0
+mmap(NULL, 158997, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f8a973c4000
+close(3)                                = 0
+open("/lib64/libgmp.so.10", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\200\304\0\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=495720, ...}) = 0
+mmap(NULL, 2584736, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f8a96f53000
+mprotect(0x7f8a96fc9000, 2093056, PROT_NONE) = 0
+mmap(0x7f8a971c8000, 12288, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x75000) = 0x7f8a971c8000
+close(3)                                = 0
+open("/lib64/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0P&\2\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=2156072, ...}) = 0
+mmap(NULL, 3985888, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f8a96b85000
+mprotect(0x7f8a96d48000, 2097152, PROT_NONE) = 0
+mmap(0x7f8a96f48000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1c3000) = 0x7f8a96f48000
+mmap(0x7f8a96f4e000, 16864, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f8a96f4e000
+close(3)
+
+
+Some of the relevant calls include the following: 
+access: check the user permissions for this library
+open: open the actual library to make ready for use
+fstat: simply returns information about the actual library
+mmap: maps the actual library to the memory for the executable to use
+close: closes reference to the library
+mprotect: protects a region of memory pertaining to the library
+
+
+5. Run the following command, replacing nnnnnnnnn with ID number:
+$ ls /usr/bin | awk '(NR-nnnnnnnnn)%251 == 0'
+Output:
+autoscan
+devdump
+gjs
+intltool-prepare
+lex
+nl-fib-lookup
+pktogf
+scanadf
+theora_player
+xzless
+
+
+6. First navigate to the /usr/bin directory with the following:
+$ cd /usr/bin
+
+a. AUTOSCAN
+$ ldd ./autoscan
+Output:
+not a dynamic executable
+
+This is output because autoscan does not require the use of shared libraries
+and therefore, is deemed a non-dynamic executable.
+
+b. DEVDUMP
+$ ldd ./devdump
+Output:
+linux-vdso.so.1 =>  (0x00007fffcc1e9000)
+libusal.so.0 => /lib64/libusal.so.0 (0x00007f9f98101000)
+librols.so.0 => /lib64/librols.so.0 (0x00007f9f97ef7000)
+libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f9f97cdb000)
+libc.so.6 => /lib64/libc.so.6 (0x00007f9f9790d000)
+/lib64/ld-linux-x86-64.so.2 (0x00007f9f9831b000)
+
+c. GJS
+$ ldd ./gjs
+Output:
+	linux-vdso.so.1 =>  (0x00007fff87dfc000)
+	libgjs.so.0 => /lib64/libgjs.so.0 (0x00007fa467006000)
+	libgtk-3.so.0 => /lib64/libgtk-3.so.0 (0x00007fa4666fe000)
+	libgdk-3.so.0 => /lib64/libgdk-3.so.0 (0x00007fa466414000)
+	libatk-1.0.so.0 => /lib64/libatk-1.0.so.0 (0x00007fa4661ee000)
+	libpangocairo-1.0.so.0 => /lib64/libpangocairo-1.0.so.0 (0x00007fa465fe0000)
+	libgdk_pixbuf-2.0.so.0 => /lib64/libgdk_pixbuf-2.0.so.0 (0x00007fa465db8000)
+	libpango-1.0.so.0 => /lib64/libpango-1.0.so.0 (0x00007fa465b72000)
+	librt.so.1 => /lib64/librt.so.1 (0x00007fa46596a000)
+	libreadline.so.6 => /lib64/libreadline.so.6 (0x00007fa465724000)
+	libgirepository-1.0.so.1 => /lib64/libgirepository-1.0.so.1 (0x00007fa4654f0000)
+	libffi.so.6 => /lib64/libffi.so.6 (0x00007fa4652e8000)
+	libcairo-gobject.so.2 => /lib64/libcairo-gobject.so.2 (0x00007fa4650df000)
+	libgthread-2.0.so.0 => /lib64/libgthread-2.0.so.0 (0x00007fa464edd000)
+	libgio-2.0.so.0 => /lib64/libgio-2.0.so.0 (0x00007fa464b3e000)
+	libgobject-2.0.so.0 => /lib64/libgobject-2.0.so.0 (0x00007fa4648ee000)
+	libglib-2.0.so.0 => /lib64/libglib-2.0.so.0 (0x00007fa4645d8000)
+	libmozjs-52.so.0 => /lib64/libmozjs-52.so.0 (0x00007fa462ed5000)
+	libcairo.so.2 => /lib64/libcairo.so.2 (0x00007fa462b9e000)
+	libX11.so.6 => /lib64/libX11.so.6 (0x00007fa462860000)
+	libXext.so.6 => /lib64/libXext.so.6 (0x00007fa46264e000)
+	libstdc++.so.6 => /lib64/libstdc++.so.6 (0x00007fa462347000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007fa462045000)
+	libgcc_s.so.1 => /lib64/libgcc_s.so.1 (0x00007fa461e2f000)
+	libpthread.so.0 => /lib64/libpthread.so.0 (0x00007fa461c13000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007fa461845000)
+	libgmodule-2.0.so.0 => /lib64/libgmodule-2.0.so.0 (0x00007fa461641000)
+	libXi.so.6 => /lib64/libXi.so.6 (0x00007fa461431000)
+	libXfixes.so.3 => /lib64/libXfixes.so.3 (0x00007fa46122b000)
+	libatk-bridge-2.0.so.0 => /lib64/libatk-bridge-2.0.so.0 (0x00007fa460ffc000)
+	libwayland-client.so.0 => /lib64/libwayland-client.so.0 (0x00007fa460ded000)
+	libepoxy.so.0 => /lib64/libepoxy.so.0 (0x00007fa460ac1000)
+	libpangoft2-1.0.so.0 => /lib64/libpangoft2-1.0.so.0 (0x00007fa4608ab000)
+	libfontconfig.so.1 => /lib64/libfontconfig.so.1 (0x00007fa460669000)
+	libXinerama.so.1 => /lib64/libXinerama.so.1 (0x00007fa460466000)
+	libXrandr.so.2 => /lib64/libXrandr.so.2 (0x00007fa46025b000)
+	libXcursor.so.1 => /lib64/libXcursor.so.1 (0x00007fa460050000)
+	libXcomposite.so.1 => /lib64/libXcomposite.so.1 (0x00007fa45fe4d000)
+	libXdamage.so.1 => /lib64/libXdamage.so.1 (0x00007fa45fc4a000)
+	libxkbcommon.so.0 => /lib64/libxkbcommon.so.0 (0x00007fa45fa0a000)
+	libwayland-cursor.so.0 => /lib64/libwayland-cursor.so.0 (0x00007fa45f802000)
+	libwayland-egl.so.1 => /lib64/libwayland-egl.so.1 (0x00007fa45f600000)
+	libfreetype.so.6 => /lib64/libfreetype.so.6 (0x00007fa45f341000)
+	libpng15.so.15 => /lib64/libpng15.so.15 (0x00007fa45f116000)
+	libthai.so.0 => /lib64/libthai.so.0 (0x00007fa45ef0a000)
+	libfribidi.so.0 => /lib64/libfribidi.so.0 (0x00007fa45ecee000)
+	libtinfo.so.5 => /lib64/libtinfo.so.5 (0x00007fa45eac4000)
+	libdl.so.2 => /lib64/libdl.so.2 (0x00007fa45e8c0000)
+	libpixman-1.so.0 => /lib64/libpixman-1.so.0 (0x00007fa45e617000)
+	libEGL.so.1 => /lib64/libEGL.so.1 (0x00007fa45e403000)
+	libxcb-shm.so.0 => /lib64/libxcb-shm.so.0 (0x00007fa45e1ff000)
+	libxcb.so.1 => /lib64/libxcb.so.1 (0x00007fa45dfd7000)
+	libxcb-render.so.0 => /lib64/libxcb-render.so.0 (0x00007fa45ddc9000)
+	libXrender.so.1 => /lib64/libXrender.so.1 (0x00007fa45dbbe000)
+	libz.so.1 => /lib64/libz.so.1 (0x00007fa45d9a8000)
+	libGL.so.1 => /lib64/libGL.so.1 (0x00007fa45d71c000)
+	libpcre.so.1 => /lib64/libpcre.so.1 (0x00007fa45d4ba000)
+	libselinux.so.1 => /lib64/libselinux.so.1 (0x00007fa45d293000)
+	libresolv.so.2 => /lib64/libresolv.so.2 (0x00007fa45d07a000)
+	libmount.so.1 => /lib64/libmount.so.1 (0x00007fa45ce37000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fa4672d7000)
+	libatspi.so.0 => /lib64/libatspi.so.0 (0x00007fa45cc06000)
+	libdbus-1.so.3 => /lib64/libdbus-1.so.3 (0x00007fa45c9b6000)
+	libharfbuzz.so.0 => /lib64/libharfbuzz.so.0 (0x00007fa45c719000)
+	libexpat.so.1 => /lib64/libexpat.so.1 (0x00007fa45c4ef000)
+	libuuid.so.1 => /lib64/libuuid.so.1 (0x00007fa45c2ea000)
+	libbz2.so.1 => /lib64/libbz2.so.1 (0x00007fa45c0da000)
+	libGLdispatch.so.0 => /lib64/libGLdispatch.so.0 (0x00007fa45be24000)
+	libXau.so.6 => /lib64/libXau.so.6 (0x00007fa45bc20000)
+	libGLX.so.0 => /lib64/libGLX.so.0 (0x00007fa45b9ee000)
+	libblkid.so.1 => /lib64/libblkid.so.1 (0x00007fa45b7ae000)
+	libsystemd.so.0 => /lib64/libsystemd.so.0 (0x00007fa45b57d000)
+	libgraphite2.so.3 => /lib64/libgraphite2.so.3 (0x00007fa45b34f000)
+	libcap.so.2 => /lib64/libcap.so.2 (0x00007fa45b14a000)
+	liblzma.so.5 => /lib64/liblzma.so.5 (0x00007fa45af24000)
+	liblz4.so.1 => /lib64/liblz4.so.1 (0x00007fa45ad0f000)
+	libgcrypt.so.11 => /lib64/libgcrypt.so.11 (0x00007fa45aa8e000)
+	libgpg-error.so.0 => /lib64/libgpg-error.so.0 (0x00007fa45a889000)
+	libdw.so.1 => /lib64/libdw.so.1 (0x00007fa45a638000)
+	libattr.so.1 => /lib64/libattr.so.1 (0x00007fa45a433000)
+	libelf.so.1 => /lib64/libelf.so.1 (0x00007fa45a21b000)
+
+d. INTLTOOL-PREPARE
+$ ldd ./intltool-prepare
+Output:
+not a dynamic executable
+
+Again, the intltool-prepare executable does not require the use of external 
+shared libraries.
+
+e. LEX
+$ ldd ./lex
+Output:
+	linux-vdso.so.1 =>  (0x00007fff747b7000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007f61be534000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007f61be166000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f61be836000)
+
+f. NL-FIB-LOOKUP
+$ ldd ./nl-fib-lookup
+Output:
+	linux-vdso.so.1 =>  (0x00007ffeae3f7000)
+	libnl-cli-3.so.200 => /lib64/libnl-cli-3.so.200 (0x00007ff6f550e000)
+	libnl-nf-3.so.200 => /lib64/libnl-nf-3.so.200 (0x00007ff6f52f5000)
+	libnl-genl-3.so.200 => /lib64/libnl-genl-3.so.200 (0x00007ff6f50ef000)
+	libdl.so.2 => /lib64/libdl.so.2 (0x00007ff6f4eeb000)
+	libnl-3.so.200 => /lib64/libnl-3.so.200 (0x00007ff6f4cca000)
+	libnl-route-3.so.200 => /lib64/libnl-route-3.so.200 (0x00007ff6f4a5d000)
+	libnl-idiag-3.so.200 => /lib64/libnl-idiag-3.so.200 (0x00007ff6f4854000)
+	libpthread.so.0 => /lib64/libpthread.so.0 (0x00007ff6f4638000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007ff6f4336000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007ff6f3f68000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007ff6f5719000)
+
+g. PKTOGF
+$ ldd ./pktogf
+Output:
+	linux-vdso.so.1 =>  (0x00007ffc2ad98000)
+	libkpathsea.so.6 => /lib64/libkpathsea.so.6 (0x00007fb3989b2000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007fb3986b0000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007fb3982e2000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007fb398bcb000)
+
+h. SCANADF
+$ ldd ./scanadf
+Output:
+	linux-vdso.so.1 =>  (0x00007ffd68999000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007f1a9db37000)
+	libsane.so.1 => /lib64/libsane.so.1 (0x00007f1a9d908000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007f1a9d53a000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f1a9de39000)
+	libdl.so.2 => /lib64/libdl.so.2 (0x00007f1a9d336000)
+	libv4l1.so.0 => /lib64/libv4l1.so.0 (0x00007f1a9d130000)
+	libieee1284.so.3 => /lib64/libieee1284.so.3 (0x00007f1a9cf24000)
+	libtiff.so.5 => /lib64/libtiff.so.5 (0x00007f1a9ccb0000)
+	libjpeg.so.62 => /lib64/libjpeg.so.62 (0x00007f1a9ca5b000)
+	libgphoto2.so.6 => /lib64/libgphoto2.so.6 (0x00007f1a9c7d6000)
+	libgphoto2_port.so.12 => /lib64/libgphoto2_port.so.12 (0x00007f1a9c5cb000)
+	libusb-1.0.so.0 => /lib64/libusb-1.0.so.0 (0x00007f1a9c3b2000)
+	libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f1a9c196000)
+	libv4l2.so.0 => /lib64/libv4l2.so.0 (0x00007f1a9bf88000)
+	libjbig.so.2.0 => /lib64/libjbig.so.2.0 (0x00007f1a9bd7c000)
+	libz.so.1 => /lib64/libz.so.1 (0x00007f1a9bb66000)
+	libltdl.so.7 => /lib64/libltdl.so.7 (0x00007f1a9b95c000)
+	libexif.so.12 => /lib64/libexif.so.12 (0x00007f1a9b717000)
+	libudev.so.1 => /lib64/libudev.so.1 (0x00007f1a9b501000)
+	libv4lconvert.so.0 => /lib64/libv4lconvert.so.0 (0x00007f1a9b288000)
+	librt.so.1 => /lib64/librt.so.1 (0x00007f1a9b080000)
+	libcap.so.2 => /lib64/libcap.so.2 (0x00007f1a9ae7b000)
+	libdw.so.1 => /lib64/libdw.so.1 (0x00007f1a9ac2a000)
+	libgcc_s.so.1 => /lib64/libgcc_s.so.1 (0x00007f1a9aa14000)
+	libattr.so.1 => /lib64/libattr.so.1 (0x00007f1a9a80f000)
+	libelf.so.1 => /lib64/libelf.so.1 (0x00007f1a9a5f7000)
+	liblzma.so.5 => /lib64/liblzma.so.5 (0x00007f1a9a3d1000)
+	libbz2.so.1 => /lib64/libbz2.so.1 (0x00007f1a9a1c1000)
+
+i. THEORA_PLAYER
+$ ldd ./theora_player
+Output:
+	linux-vdso.so.1 =>  (0x00007ffc27df0000)
+	libtheoradec.so.1 => /lib64/libtheoradec.so.1 (0x00007f7ad9721000)
+	libSDL-1.2.so.0 => /lib64/libSDL-1.2.so.0 (0x00007f7ad9488000)
+	libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f7ad926c000)
+	libvorbis.so.0 => /lib64/libvorbis.so.0 (0x00007f7ad903f000)
+	libm.so.6 => /lib64/libm.so.6 (0x00007f7ad8d3d000)
+	libogg.so.0 => /lib64/libogg.so.0 (0x00007f7ad8b36000)
+	libc.so.6 => /lib64/libc.so.6 (0x00007f7ad8768000)
+	libdl.so.2 => /lib64/libdl.so.2 (0x00007f7ad8564000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f7ad9931000)
+
+j. XZLESS
+$ ldd ./xzless
+Output:
+not a dynamic executable
+
+Again, the xzless executable does not require the use of any shared libraries.
+
+
+7. SORTED LIST OF LIBRARIES USED
+Copy-paste all of the libaries into a file named libraries.txt
+Run the following command to get a sense of the output:
+$ sort libraries.txt
+
+From the output, it is apparent that there are duplicate libraries, but sort -u will not be 
+effective because the memory addresses are still distinct at the end of each library path.
+
+Let's use a regex expression to sort, removing the content between parentheses:
+$ sed 's/'\(.*'//g' libraries.txt | sort -u > sortedFile.txt
+
+
+SORTED LIST (with duplicates removed):
+/lib64/ld-linux-x86-64.so.2
+libatk-1.0.so.0 => /lib64/libatk-1.0.so.0
+libatk-bridge-2.0.so.0 => /lib64/libatk-bridge-2.0.so.0
+libatspi.so.0 => /lib64/libatspi.so.0
+libattr.so.1 => /lib64/libattr.so.1
+libblkid.so.1 => /lib64/libblkid.so.1
+libbz2.so.1 => /lib64/libbz2.so.1
+libcairo-gobject.so.2 => /lib64/libcairo-gobject.so.2
+libcairo.so.2 => /lib64/libcairo.so.2
+libcap.so.2 => /lib64/libcap.so.2
+libc.so.6 => /lib64/libc.so.6
+libdbus-1.so.3 => /lib64/libdbus-1.so.3
+libdl.so.2 => /lib64/libdl.so.2
+libdw.so.1 => /lib64/libdw.so.1
+libEGL.so.1 => /lib64/libEGL.so.1
+libelf.so.1 => /lib64/libelf.so.1
+libepoxy.so.0 => /lib64/libepoxy.so.0
+libexif.so.12 => /lib64/libexif.so.12
+libexpat.so.1 => /lib64/libexpat.so.1
+libffi.so.6 => /lib64/libffi.so.6
+libfontconfig.so.1 => /lib64/libfontconfig.so.1
+libfreetype.so.6 => /lib64/libfreetype.so.6
+libfribidi.so.0 => /lib64/libfribidi.so.0
+libgcc_s.so.1 => /lib64/libgcc_s.so.1
+libgcrypt.so.11 => /lib64/libgcrypt.so.11
+libgdk-3.so.0 => /lib64/libgdk-3.so.0
+libgdk_pixbuf-2.0.so.0 => /lib64/libgdk_pixbuf-2.0.so.0
+libgio-2.0.so.0 => /lib64/libgio-2.0.so.0
+libgirepository-1.0.so.1 => /lib64/libgirepository-1.0.so.1
+libgjs.so.0 => /lib64/libgjs.so.0
+libGLdispatch.so.0 => /lib64/libGLdispatch.so.0
+libglib-2.0.so.0 => /lib64/libglib-2.0.so.0
+libGL.so.1 => /lib64/libGL.so.1
+libGLX.so.0 => /lib64/libGLX.so.0
+libgmodule-2.0.so.0 => /lib64/libgmodule-2.0.so.0
+libgobject-2.0.so.0 => /lib64/libgobject-2.0.so.0
+libgpg-error.so.0 => /lib64/libgpg-error.so.0
+libgphoto2_port.so.12 => /lib64/libgphoto2_port.so.12
+libgphoto2.so.6 => /lib64/libgphoto2.so.6
+libgraphite2.so.3 => /lib64/libgraphite2.so.3
+libgthread-2.0.so.0 => /lib64/libgthread-2.0.so.0
+libgtk-3.so.0 => /lib64/libgtk-3.so.0
+libharfbuzz.so.0 => /lib64/libharfbuzz.so.0
+libieee1284.so.3 => /lib64/libieee1284.so.3
+libjbig.so.2.0 => /lib64/libjbig.so.2.0
+libjpeg.so.62 => /lib64/libjpeg.so.62
+libkpathsea.so.6 => /lib64/libkpathsea.so.6
+libltdl.so.7 => /lib64/libltdl.so.7
+liblz4.so.1 => /lib64/liblz4.so.1
+liblzma.so.5 => /lib64/liblzma.so.5
+libmount.so.1 => /lib64/libmount.so.1
+libmozjs-52.so.0 => /lib64/libmozjs-52.so.0
+libm.so.6 => /lib64/libm.so.6
+libnl-3.so.200 => /lib64/libnl-3.so.200
+libnl-cli-3.so.200 => /lib64/libnl-cli-3.so.200
+libnl-genl-3.so.200 => /lib64/libnl-genl-3.so.200
+libnl-idiag-3.so.200 => /lib64/libnl-idiag-3.so.200
+libnl-nf-3.so.200 => /lib64/libnl-nf-3.so.200
+libnl-route-3.so.200 => /lib64/libnl-route-3.so.200
+libogg.so.0 => /lib64/libogg.so.0
+libpango-1.0.so.0 => /lib64/libpango-1.0.so.0
+libpangocairo-1.0.so.0 => /lib64/libpangocairo-1.0.so.0
+libpangoft2-1.0.so.0 => /lib64/libpangoft2-1.0.so.0
+libpcre.so.1 => /lib64/libpcre.so.1
+libpixman-1.so.0 => /lib64/libpixman-1.so.0
+libpng15.so.15 => /lib64/libpng15.so.15
+libpthread.so.0 => /lib64/libpthread.so.0
+libreadline.so.6 => /lib64/libreadline.so.6
+libresolv.so.2 => /lib64/libresolv.so.2
+librols.so.0 => /lib64/librols.so.0
+librt.so.1 => /lib64/librt.so.1
+libsane.so.1 => /lib64/libsane.so.1
+libSDL-1.2.so.0 => /lib64/libSDL-1.2.so.0
+libselinux.so.1 => /lib64/libselinux.so.1
+libstdc++.so.6 => /lib64/libstdc++.so.6
+libsystemd.so.0 => /lib64/libsystemd.so.0
+libthai.so.0 => /lib64/libthai.so.0
+libtheoradec.so.1 => /lib64/libtheoradec.so.1
+libtiff.so.5 => /lib64/libtiff.so.5
+libtinfo.so.5 => /lib64/libtinfo.so.5
+libudev.so.1 => /lib64/libudev.so.1
+libusal.so.0 => /lib64/libusal.so.0
+libusb-1.0.so.0 => /lib64/libusb-1.0.so.0
+libuuid.so.1 => /lib64/libuuid.so.1
+libv4l1.so.0 => /lib64/libv4l1.so.0
+libv4l2.so.0 => /lib64/libv4l2.so.0
+libv4lconvert.so.0 => /lib64/libv4lconvert.so.0
+libvorbis.so.0 => /lib64/libvorbis.so.0
+libwayland-client.so.0 => /lib64/libwayland-client.so.0
+libwayland-cursor.so.0 => /lib64/libwayland-cursor.so.0
+libwayland-egl.so.1 => /lib64/libwayland-egl.so.1
+libX11.so.6 => /lib64/libX11.so.6
+libXau.so.6 => /lib64/libXau.so.6
+libxcb-render.so.0 => /lib64/libxcb-render.so.0
+libxcb-shm.so.0 => /lib64/libxcb-shm.so.0
+libxcb.so.1 => /lib64/libxcb.so.1
+libXcomposite.so.1 => /lib64/libXcomposite.so.1
+libXcursor.so.1 => /lib64/libXcursor.so.1
+libXdamage.so.1 => /lib64/libXdamage.so.1
+libXext.so.6 => /lib64/libXext.so.6
+libXfixes.so.3 => /lib64/libXfixes.so.3
+libXinerama.so.1 => /lib64/libXinerama.so.1
+libXi.so.6 => /lib64/libXi.so.6
+libxkbcommon.so.0 => /lib64/libxkbcommon.so.0
+libXrandr.so.2 => /lib64/libXrandr.so.2
+libXrender.so.1 => /lib64/libXrender.so.1
+libz.so.1 => /lib64/libz.so.1
+linux-vdso.so.1 => 
+
