@@ -1,0 +1,99 @@
+ASSIGNMENT 8: HOMEWORK
+
+1. Created hw file:
+$ emacs hw8.txt
+
+2. Use git checkout to checkout v3.0 to new branch:
+$ git checkout v3.0 -b quote
+
+3. Use the patch command to patch the six files:
+$ patch -p1 < quote-3.0-patch.txt
+Given Output:
+patching file src/cmp.c
+patching file src/diff.c
+patching file src/diff3.c
+patching file src/dir.c
+patching file src/sdiff.c
+patching file src/util.c
+
+4. Familiarize yourself with the add-change-log-entry-other-window (C-x 4 a)
+command.
+
+5. Create a new ChangeLog file by typing
+$ emacs
+C-x 4 a
+Copy-paste the notes from the original patch in git-log.txt into the ChangeLog.
+
+6. Perform a commit with the new changes
+$ git add .
+$ git commit -F ChangeLog
+
+Note that this work was done in another cloned directory away from any other cloned directories made when doing the Laboratory section (avoid muddling up the commit that we care about). Therefore, the output is as follows:
+
+[quote 88f48f6] 2020-05-21  Zachary Chang  <zacharyc@lnxsrv07.seas.ucla.edu>
+ Committer: Zachary Chang <zacharyc@lnxsrv07.seas.ucla.edu>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 6 files changed, 46 insertions(+), 46 deletions(-)
+
+7. Create the formatted-patch.txt file using the following command:
+$ git format-patch -1 --stdout > formatted-patch.txt
+ 
+8. Copy the formatted-patch.txt file into a new cloned repository.
+$ git checkout v3.0 -b patchery
+Apply the patch using
+$ git am < formatted-patch.txt
+Output:
+Applying: 2020-05-21 Zachary Chang <zacharyc@lnxsrv07.seas.ucla.edu>
+
+Build the system:
+$ ./bootstrap
+
+Make the additional patch file again:
+$ emacs additional-patch.txt
+Copy-paste the patch inside
+$ patch -p0 < additional-patch.txt
+
+$ ./configure
+$ make
+$ make check
+
+Confirm that it works properly:
+$ PATHTODIFF/diff . -
+Output has no grave accent as expected
+$ PATHTODIFF/diff --help 
+Output works as well without grave accents
+
+9. Making sure ChangeLog works:
+$ make distdir
+$ cd diffutils-3.0.1-6740
+$ emacs ChangeLog
+
+The Change Log that I created has been inserted at the top, so we know that
+the ChangeLog has, in fact, worked.
+
+10. Working with the emacs repo
+Log out of lnxsrv07 and then log back in with the -Y flag for GUI
+
+I found this merge on 2015-01-25 12:19:27 listed as:
+Merge branch 'master' into xwidget 
+Author: Joakim Verona
+
+On my end, I see a visual diagram with a red vertical line merging into a green
+line on the left, accompanied by the "merge branch 'master' into xwidget comment.
+
+The other subwindows show the authors of each of the commits that occur,
+the timestamp of when they occurred, and the bottom left shows the hash values
+associated with those modifications in a more detailed format. The bottom 
+right shows a list of files and additional comments associated with the 
+commit/merge/etc. In some instances, the diff file is also displayed on the 
+bottom left.
