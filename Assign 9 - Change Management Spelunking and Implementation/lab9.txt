@@ -1,0 +1,121 @@
+ASSIGNMENT 9
+
+
+LABORATORY: GIT SPELUNKING
+1. Get to the directory
+$ cd ~eggert/src/gnu/emacs-CS-35L
+
+To retrieve the amount of disk space used for the working directory:
+$ du
+The last line of output tells me that 590312 bytes are being used.
+
+Now we want to retrieve the amount of disk space used to represent the git repo.
+This not only includes the files under .git but also any other files in /emacs:
+$ du .git*
+Total up the number of bytes: 424356 + 4 + 8 + 4 = 424372 total bytes used.
+
+To figure out what in the repository takes the most space, let's sort:
+$ du .git | sort -h (no asterik since 4, 8, 4 bytes are small; -h for number sort)
+By the output, we can see that .git/objects takes the most space.
+
+After closer inspection, two common files found in the pack directory of
+.git/objects are .pack and .idx files. The .pack files contain many hash values
+of all the modifications made, including commits. This would take up a 
+huge amount of space, especially if this repository has been around for a while
+and has been changed quite a bit.
+
+2. To get the number of local branches, notice that $ git branch outputs branches,
+one per line.
+$ git branch | wc -l
+Output: 176
+There are 176 local branches
+
+Add the -r flag to search for all remote branches:
+$ git branch -r | wc -l
+Output: 177
+There are 177 remote branches
+
+3. To find the number of remote repositories:
+$ git remote | wc -l
+Output: 2
+There are 2 remote repository.
+
+To find where they are located, use -v:
+$ git remote -v
+They are located at: 
+savannah https://git.savannah.gnu.org/git/emacs.git
+origin   /u/cs/fac/eggert/src/gnu/emacs
+
+4. To find out the most recent commits:
+$ git for-each-ref --sort=-committerdate refs/heads/ | head -10
+
+From this we find that the 10 most recent branches committed to are (from most recent):
+104b68b670eb6de6614c562ae6b18c009b20584f commit	   refs/heads/master
+d2873706749ef68803e79bab6109a534f4c9d23a commit	   refs/heads/scratch/joaot/make-completion-at-point-function
+dd3fa9411a28175f9a1a984a69cfa7162023c5df commit	   refs/heads/feature/windows-with-utils
+8f22251e595d7598d6643b0d24bf5f409dc59fa8 commit	   refs/heads/scratch/completion-api
+8a4de19dfb52551a65c360a9346ede137d0fc6e8 commit	   refs/heads/scratch/a-modest-completion-redesign-proposal
+2b0f589134d9427a96ab8cf0d8473715740984ef commit	   refs/heads/scratch/fido-mode
+924a4201d24c10c48db920815ebf98dfaadc1e85 commit	   refs/heads/feature/gnus-select2
+7a10082093791f0e035e4f9f95a774a7be1cd586 commit	   refs/heads/feature/extend_face_id
+079461b360a2467ff4ab2ec57516c6f9e45f50fe commit	   refs/heads/scratch/jit-lock-antiblink-cleaned-up
+55dcd32ad2209dc34bfb6b713bf73be9bf4c4cb2 commit	   refs/heads/emacs-26
+
+5. To get the number of commits to the master branch, we can use the following command:
+$ git rev-list --count master
+Output: 141268
+There have been 141268 commits to this master branch.
+
+6. Let's first find how many total commits there have been:
+$ git rev-list --all --count
+Output: 145595
+
+So 141268/145595 = 97.0% commits are also in the master branch.
+
+7. Figure out a way to display, first of all, the number of commits.
+Notice that this option appears in the 'git shortlog' command. The -n and -s flags sort committers by the number
+of commits made.
+$ git shortlog -n -s
+The given output has the format of the list we want, but we need to constrain it to a time range.
+There is a --since flag that we can use, and we also need to constrain it to the master branch:
+$ git shortlog -n -s master --since=2013
+
+Let's also constrain it to the top 10.
+$ git shortlog -n -s master --since="Jan 01 2013" | head -10
+Here are the 10 people who authored the most commits to the master branch with the corresponding commit numbers:
+  3922	 Eli Zaretskii
+  3792	 Glenn Morris
+  3784	 Paul Eggert
+  1887	 Stefan Monnier
+  1833	 Lars Ingebrigtsen
+  1671	 Michael Albinus
+   671	 Dmitry Gutov
+   604	 Noam Postavsky
+   568	 Juri Linkov
+   506	 Alan Mackenzie
+ 
+8. First log in using -Y
+$ ssh -Y USERNAME@lnxsrv07.seas.ucla.edu
+$ PASSWORD
+
+Navigate back to the same directory
+$ cd ~eggert/src/gnu/emacs-CS-35L
+
+          [977d6] ------- ... -------------------------> [0c06b] ---- ... ----------------------------------> [abcb2] ---------------> [98ac3]
+             /						  /							|                        |
+	    /						 /							|	                 |
+	   /						/							|	                 |
+[4ea37] --				       -- ... -----------> [82073] ---					|	                 |
+	   \				      /	      		      \						|	                 |
+	    \				     /			       \					|	                 |
+	     \				    /			        \					|	                 |
+	      -----> [625ce] --- ... --> [5490c]			 \					|	                 |
+								      [00e4e] ---				|	                 |
+								         \					|	                 |
+									  \				       /	                 /
+									   \				      /		                /
+									    ---- ... ---------------------> [49cd5] ------- ... --------
+The graph above was constructed by searching for each of the IDs in XQuartz. I then drew it on paper, arranging the IDs on this diagram
+by the date and time associated with each ID, also paying attention to each IDs position on the diagram.
+It is organized with oldest commit to the left and the most recent commit to the right.
+
